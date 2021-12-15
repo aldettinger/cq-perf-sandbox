@@ -1,0 +1,16 @@
+# A camel-quarkus performance scenario to detect possible regressions
+name: cq-perf-regression-scenario
+http:
+  host: http://localhost:8080
+phases:
+- operator:
+    # Running a fixed number of users during a fixed period of time
+    always:
+      users: 100
+      # With 5 minutes duration we end up with worst measure diff of 8.4%
+      # With 60 minutes duration we end up with worst measure diff of 1.78%
+      duration: 60m
+      scenario:
+      - hello:
+        - httpRequest:
+            GET: /hello
