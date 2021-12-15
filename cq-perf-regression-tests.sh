@@ -13,7 +13,7 @@
 # We don't build using the quarkus-maven-plugin so that we can test against a SNAPSHOT or release candidate versions (don't need to wait for quarkus-platform release)
 
 display_usage() {
-  echo "This tool applies a quick performance test against a list of camel-quarkus versions. As such, it should be able to detect performance regressions."
+  echo "This tool applies a performance test against a list of camel-quarkus versions. As such, it should be able to detect performance regressions."
   echo -e "Example: $0 2.4.0 2.5.0"
 }
 
