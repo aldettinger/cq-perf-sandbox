@@ -3,7 +3,6 @@
 # @TODO:
 # Add transformation logic to the perf regression sample app
 # Upgrade to hyperfoil-maven-plugin 0.18 to fix req/s and deps issue when released January 2022 ?
-# Tune the test duration for stability, at least 5 minutes
 # Implement detection of regression (5% variation seems reasonable)
 # Improve the staging support, today we need to hard code it pom.xml files
 # Use an archetype instead of copying the perf regression sample app ?
