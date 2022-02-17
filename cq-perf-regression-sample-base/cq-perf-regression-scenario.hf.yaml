@@ -7,10 +7,10 @@ phases:
     # Running a fixed number of users during a fixed period of time
     always:
       users: 100
-      # With  5 minutes duration we end up with roughly 8.4% variation accross successive runs
-      # With 10 minutes duration we end up with roughly 3.5% variation accross successive runs
-      # With 60 minutes duration we end up with roughly 1.8% variation accross successive runs
-      duration: 10m
+      # With  5 minutes duration we end up with roughly 8.4% variation across successive runs
+      # With 10 minutes duration we end up with roughly 3.5% variation across successive runs
+      # With 60 minutes duration we end up with roughly 1.8% variation across successive runs
+      duration: 10s
       scenario:
       - hello:
         - httpRequest:

@@ -7,6 +7,7 @@
     <parent>
         <groupId>org.apache.camel.quarkus</groupId>
         <artifactId>camel-quarkus</artifactId>
+        <!-- The parent version will be replaced for each camel-quarkus versions under performance regression test -->
         <version>2.6.0-SNAPSHOT</version>
     </parent>
     <artifactId>cq-perf-regression-sample</artifactId>
@@ -73,6 +74,7 @@
             <plugin>
                 <groupId>io.quarkus</groupId>
                 <artifactId>quarkus-maven-plugin</artifactId>
+                <version>${quarkus.version}</version>
                 <extensions>true</extensions>
                 <executions>
                     <execution>
@@ -99,7 +101,7 @@
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
-            <!-- display active profile in pre-integration-test phase -->
+            <!-- Display active profile in pre-integration-test phase -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-help-plugin</artifactId>
