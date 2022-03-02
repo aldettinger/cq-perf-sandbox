@@ -13,5 +13,9 @@ phases:
       duration: 10s
       scenario:
       - hello:
+        - randomUUID:
+            toVar: my-random-uuid
         - httpRequest:
-            GET: /hello
+            POST: /hello
+            body:
+              pattern: A dummy message ${my-random-uuid}

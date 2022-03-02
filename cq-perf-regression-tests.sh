@@ -45,8 +45,8 @@ EOF
     # Build and run test in JVM mode, then native mode
     pushd "cq-versions-under-test/cq-perf-regression-sample-${cqVersion}" > /dev/null
     mkdir -p target > /dev/null
-    mvn integration-test > target/jvm-logs.txt
-    mvn integration-test -Dnative -Dquarkus.native.container-build=true > target/native-logs.txt
+    mvn integration-test > target/jvm-logs.txt 2>&1
+    mvn integration-test -Dnative -Dquarkus.native.container-build=true > target/native-logs.txt 2>&1
 
     # Print the report line for this version
     QUARKUS_JVM_NB_REQS=$(grep -Po "RunMojo] Requests/sec: ([0-9.,]+)" "target/jvm-logs.txt" | sed -r 's/RunMojo] Requests\/sec: ([0-9.,]+)/\1/g')
