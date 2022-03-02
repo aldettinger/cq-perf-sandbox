@@ -2,9 +2,10 @@
 
 # @TODO:
 # Add transformation logic to the perf regression sample app
-# Upgrade to hyperfoil-maven-plugin 0.18 to fix req/s and deps issue when released January 2022 ?
+# An example using atlasmap transformation ?
+#
 # Implement detection of regression (5% variation seems reasonable)
-# Improve the staging support, today we need to hard code it pom.xml files
+# Improve the staging support, today we need to hard code it manually in the pom.xml files
 # Use an archetype instead of copying the perf regression sample app ?
 
 # @NOTES:
@@ -47,10 +48,8 @@ EOF
     mvn integration-test > target/jvm-logs.txt
     mvn integration-test -Dnative -Dquarkus.native.container-build=true > target/native-logs.txt
 
-	# Print the report line for this version
-    #QUARKUS_JVM_NB_REQS=$(grep -Po "RunMojo] ([0-9]+) requests" "target/jvm-logs.txt" | sed -r 's/RunMojo] ([0-9]+) requests/\1/g')
+    # Print the report line for this version
     QUARKUS_JVM_NB_REQS=$(grep -Po "RunMojo] Requests/sec: ([0-9.,]+)" "target/jvm-logs.txt" | sed -r 's/RunMojo] Requests\/sec: ([0-9.,]+)/\1/g')
-    #QUARKUS_NATIVE_NB_REQS=$(grep -Po "RunMojo] ([0-9]+) requests" "target/native-logs.txt" | sed -r 's/RunMojo] ([0-9]+) requests/\1/g')
     QUARKUS_NATIVE_NB_REQS=$(grep -Po "RunMojo] Requests/sec: ([0-9.,]+)" "target/native-logs.txt" | sed -r 's/RunMojo] Requests\/sec: ([0-9.,]+)/\1/g')
     echo "${cqVersion}	${QUARKUS_JVM_NB_REQS}		${QUARKUS_NATIVE_NB_REQS}"
 
