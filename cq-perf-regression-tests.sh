@@ -1,15 +1,14 @@
 #!/bin/bash
 
 # @TODO:
-# Add transformation logic to the perf regression sample app
-# An example using atlasmap transformation ?
 #
 # Implement detection of regression (5% variation seems reasonable)
+# Make the test duration customizable ?
 # Improve the staging support, today we need to hard code it manually in the pom.xml files
 # Use an archetype instead of copying the perf regression sample app ?
 
 # @NOTES:
-# We should be able to build with camel-quarkus version >= 1.1.0 with current build approach
+# We should be able to build with camel-quarkus version >= 1.7.0 (as atlasmap was introduced that late)
 # We don't build using the quarkus-maven-plugin so that we can test against a SNAPSHOT or release candidate versions (don't need to wait for quarkus-platform release)
 
 display_usage() {
