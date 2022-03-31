@@ -19,7 +19,6 @@ import org.apache.commons.lang3.RegExUtils;
  * # Make the test duration customizable ?
  * # Improve the staging support, today we need to hard code it manually in the pom.xml files
  * # Implement detection of regression (5% variation seems reasonable)
- * # Upgrade to hyperfoil-maven-plugin 0.19 (should be able to remove the dep to hyperfoil-test-suite
  * # Write stdout/stderr of perf test to file + stdout
  * # Collect metrics and display report
  * 

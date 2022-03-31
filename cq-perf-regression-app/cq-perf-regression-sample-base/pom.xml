@@ -160,20 +160,12 @@
             <plugin>
                 <groupId>io.hyperfoil</groupId>
                 <artifactId>hyperfoil-maven-plugin</artifactId>
-                <version>0.18</version>
+                <version>0.19</version>
                 <!-- Bound to integration-test phase by default -->
                 <configuration>
                     <yaml>cq-perf-regression-scenario.hf.yaml</yaml>
                     <percentiles>true</percentiles>
                 </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>io.hyperfoil</groupId>
-                        <artifactId>hyperfoil-test-suite</artifactId>
-                        <type>pom</type>
-                        <version>0.2</version>
-                    </dependency>
-                </dependencies>
                 <executions>
                     <execution>
                         <goals>
