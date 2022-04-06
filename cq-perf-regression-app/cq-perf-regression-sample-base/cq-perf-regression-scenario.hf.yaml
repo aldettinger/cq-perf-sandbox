@@ -10,7 +10,7 @@ phases:
       # With  5 minutes duration we end up with roughly 8.4% variation across successive runs
       # With 10 minutes duration we end up with roughly 3.5% variation across successive runs
       # With 60 minutes duration we end up with roughly 1.8% variation across successive runs
-      duration: 10m
+      duration: 1s
       scenario:
       - hello:
         - randomUUID:
