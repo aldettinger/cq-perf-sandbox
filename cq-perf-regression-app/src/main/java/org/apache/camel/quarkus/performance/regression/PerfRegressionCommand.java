@@ -25,11 +25,17 @@ import picocli.CommandLine.Parameters;
  * # Implement detection of regression (5% variation seems reasonable)
  * # Write stdout/stderr of perf test to file + stdout
  * # Collect metrics and display report
- * # Validate parameters and options
+ * # Validate parameters and options (business logic)
+ * # There are now a lot of cmd exec, should we refactor that ?
  *
  * # @NOTES:
  * # We should be able to build with camel-quarkus version >= 1.7.0 (as atlasmap was introduced that late)
  * # We don't build generate sample app with the quarkus-maven-plugin so that we can test against a SNAPSHOT or release candidate versions (don't need to wait for quarkus-platform release)
+ * 
+ * mvn versions matrix:
+ * 2.6.0.CR1 => 3.8.4
+ * 2.1.0 => 3.8.1
+ * < 2.1.0 => 3.6.2
  */
 @picocli.CommandLine.Command(description = "Run a performance test against a list of Camel Quarkus versions")
 public class PerfRegressionCommand implements Runnable {
@@ -80,11 +86,68 @@ public class PerfRegressionCommand implements Runnable {
         }
         FileUtils.writeStringToFile(pomFile, pomFileContent, StandardCharsets.UTF_8);
 
+        // Replace the maven version in maven wrapper
+        String targetMavenVersion = getTargetMavenVersion(cqVersionUnderTestFolder);
+        setMvnwMavenVersion(cqVersionUnderTestFolder, targetMavenVersion);
+
         // Run performance regression test in JVM mode
         runPerfRegression(cqVersionUnderTestFolder, "integration-test");
 
         // Run performance regression test in native mode
         runPerfRegression(cqVersionUnderTestFolder, "integration-test -Dnative -Dquarkus.native.container-build=true");
+    }
+
+    private static String getTargetMavenVersion(Path cqVersionUnderTestFolder) throws IOException {
+        File mvnwFile = cqVersionUnderTestFolder.resolve("mvnw").toFile();
+        CommandLine cmd = CommandLine.parse(mvnwFile.getAbsolutePath()+ " help:evaluate -Dexpression='target-maven-version' -q -DforceStdout");
+        DefaultExecutor executor = new DefaultExecutor();
+        ByteArrayOutputStream stdoutStream = new ByteArrayOutputStream();
+        PumpStreamHandler psh = new PumpStreamHandler(stdoutStream);
+        executor.setStreamHandler(psh);
+        executor.setWorkingDirectory(cqVersionUnderTestFolder.toFile());
+
+        // @TODO: is it output ? or stderr or stdout ? maybe both
+        String stdout;
+        try {
+            int exitValue = executor.execute(cmd);
+            stdout = stdoutStream.toString(StandardCharsets.UTF_8);
+            if(exitValue != 0) {
+                System.err.println(stdout);
+                throw new RuntimeException("The command '" + cmd +"' has returned exitValue "+exitValue+", process logs below:\n"+stdout);
+            }
+        }
+        catch(ExecuteException eex) {
+            stdout = stdoutStream.toString(StandardCharsets.UTF_8);
+            throw new RuntimeException("The command '" + cmd +"' has thrown ExecuteException, process logs below:\n"+stdout);
+        }
+        String targetMavenVersion = stdout.substring(stdout.lastIndexOf(System.lineSeparator())+System.lineSeparator().length());
+
+        return "null object or invalid expression".equals(targetMavenVersion) ? "3.6.2" : targetMavenVersion;
+    }
+
+    private static void setMvnwMavenVersion(Path cqVersionUnderTestFolder, String targetMavenVersion) throws IOException {
+        File mvnwFile = cqVersionUnderTestFolder.resolve("mvnw").toFile();
+        CommandLine cmd = CommandLine.parse(mvnwFile.getAbsolutePath()+ " wrapper:wrapper -Dmaven="+targetMavenVersion);
+        DefaultExecutor executor = new DefaultExecutor();
+        ByteArrayOutputStream stdoutStream = new ByteArrayOutputStream();
+        PumpStreamHandler psh = new PumpStreamHandler(stdoutStream);
+        executor.setStreamHandler(psh);
+        executor.setWorkingDirectory(cqVersionUnderTestFolder.toFile());
+
+        // @TODO: is it output ? or stderr or stdout ? maybe both
+        String stdout;
+        try {
+            int exitValue = executor.execute(cmd);
+            stdout = stdoutStream.toString(StandardCharsets.UTF_8);
+            if(exitValue != 0) {
+                System.err.println(stdout);
+                throw new RuntimeException("The command '" + cmd +"' has returned exitValue "+exitValue+", process logs below:\n"+stdout);
+            }
+        }
+        catch(ExecuteException eex) {
+            stdout = stdoutStream.toString(StandardCharsets.UTF_8);
+            throw new RuntimeException("The command '" + cmd +"' has thrown ExecuteException, process logs below:\n"+stdout);
+        }
     }
 
     private static void runPerfRegression(Path cqVersionUnderTestFolder, String args) throws IOException {
