@@ -20,13 +20,13 @@ import picocli.CommandLine.Parameters;
 
 /**
  * # @TODO:
- * # Make the test duration customizable, with default to 10 minutes
  * # Add an option to switch off native mode
  * # Implement detection of regression (5% variation seems reasonable)
  * # Write stdout/stderr of perf test to file + stdout
  * # Collect metrics and display report
  * # Validate parameters and options (business logic)
  * # There are now a lot of cmd exec, should we refactor that ?
+ * # Template file edition, find a library to edit XML and yaml files => Stop using GUID replacement.
  *
  * # @NOTES:
  * # We should be able to build with camel-quarkus version >= 1.7.0 (as atlasmap was introduced that late)
@@ -51,6 +51,9 @@ public class PerfRegressionCommand implements Runnable {
     @Option(names = {"-cs", "--camel-staging-repository"}, description = "Camel staging repository, e.g: https://repository.apache.org/content/repositories/orgapachecamel-1424")
     private String camelStagingRepository;
 
+    @Option(names = {"-d", "--duration"}, defaultValue = "10m", description = "The duration of a single performance test scenario (e.g. 45s, 30m, 1h). Up to 2 scenarios per version could be run.")
+    private String singleScenarioDuration;
+
     @Override
     public void run() {
 
@@ -72,6 +75,11 @@ public class PerfRegressionCommand implements Runnable {
 
         // Copy the template project into a folder dedicated to cqVersion tests
         FileUtils.copyDirectory(PERF_SAMPLE_TEMPLATE_FOLDER.toFile(), cqVersionUnderTestFolder.toFile());
+
+        File benchmarkFile = cqVersionUnderTestFolder.resolve("cq-perf-regression-scenario.hf.yaml").toFile();
+        String benchmarkFileContent = FileUtils.readFileToString(benchmarkFile, StandardCharsets.UTF_8);
+        benchmarkFileContent = benchmarkFileContent.replaceAll("372f6453-7527-43b1-850b-3824fc3d1187", singleScenarioDuration);
+        FileUtils.writeStringToFile(benchmarkFile, benchmarkFileContent, StandardCharsets.UTF_8);
 
         File pomFile = cqVersionUnderTestFolder.resolve("pom.xml").toFile();
         String pomFileContent = FileUtils.readFileToString(pomFile, StandardCharsets.UTF_8);
