@@ -7,12 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import org.apache.commons.exec.CommandLine;
-import org.apache.commons.exec.DefaultExecutor;
-import org.apache.commons.exec.ExecuteException;
-import org.apache.commons.exec.PumpStreamHandler;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang3.RegExUtils;
 
 import picocli.CommandLine.Option;
@@ -20,22 +15,23 @@ import picocli.CommandLine.Parameters;
 
 /**
  * # @TODO:
- * # Add an option to switch off native mode
- * # Implement detection of regression (5% variation seems reasonable)
- * # Write stdout/stderr of perf test to file + stdout
- * # Collect metrics and display report
- * # Validate parameters and options (business logic)
- * # There are now a lot of cmd exec, should we refactor that ?
- * # Template file edition, find a library to edit XML and yaml files => Stop using GUID replacement.
+ * Implement detection of regression (5% variation seems reasonable)
+ * Collect metrics and display report
+ *
+ * Add an option to switch off native mode
+ * Validate parameters and options (business logic)
+ * Template file edition, find a library to edit XML and YAML files => Stop using GUID replacement.
+ * Ideally, we would not include a staging repo with a fake guid when not needed. today it generates warning.
+ *
+ * Would we integrate this prototype in the main brench one day, we could make cq-perf-regression-app an example, in order to detect breakage ?
  *
  * # @NOTES:
- * # We should be able to build with camel-quarkus version >= 1.7.0 (as atlasmap was introduced that late)
- * # We don't build generate sample app with the quarkus-maven-plugin so that we can test against a SNAPSHOT or release candidate versions (don't need to wait for quarkus-platform release)
- * 
+ * # We should be able to build with camel-quarkus version >= 2.5.0, after CAMEL-QUARKUS-2578 fix (need to enforce the version with a check)
+ * # We don't generate the cq-perf-regression-sample-app with the quarkus-maven-plugin so that we can test against a SNAPSHOT or release candidate versions (don't need to wait for quarkus-platform release)
+ *
  * mvn versions matrix:
  * 2.6.0.CR1 => 3.8.4
  * 2.1.0 => 3.8.1
- * < 2.1.0 => 3.6.2
  */
 @picocli.CommandLine.Command(description = "Run a performance test against a list of Camel Quarkus versions")
 public class PerfRegressionCommand implements Runnable {
@@ -84,7 +80,7 @@ public class PerfRegressionCommand implements Runnable {
         File pomFile = cqVersionUnderTestFolder.resolve("pom.xml").toFile();
         String pomFileContent = FileUtils.readFileToString(pomFile, StandardCharsets.UTF_8);
 
-        // Replace the parent version, camel-quarkus and camel staging repositories
+        // Replace the parent version, camel-quarkus staging repository and fianlly camel staging repository
         pomFileContent = pomFileContent.replaceAll("ce52c658-292c-461f-968b-5930dae42629", cqVersion);
         if(cqStagingRepository != null) {
             pomFileContent = pomFileContent.replaceAll("2d114490-c5a8-4c61-b960-4283811d2405", cqStagingRepository);
@@ -105,82 +101,19 @@ public class PerfRegressionCommand implements Runnable {
         runPerfRegression(cqVersionUnderTestFolder, "integration-test -Dnative -Dquarkus.native.container-build=true");
     }
 
-    private static String getTargetMavenVersion(Path cqVersionUnderTestFolder) throws IOException {
-        File mvnwFile = cqVersionUnderTestFolder.resolve("mvnw").toFile();
-        CommandLine cmd = CommandLine.parse(mvnwFile.getAbsolutePath()+ " help:evaluate -Dexpression='target-maven-version' -q -DforceStdout");
-        DefaultExecutor executor = new DefaultExecutor();
-        ByteArrayOutputStream stdoutStream = new ByteArrayOutputStream();
-        PumpStreamHandler psh = new PumpStreamHandler(stdoutStream);
-        executor.setStreamHandler(psh);
-        executor.setWorkingDirectory(cqVersionUnderTestFolder.toFile());
-
-        // @TODO: is it output ? or stderr or stdout ? maybe both
-        String stdout;
-        try {
-            int exitValue = executor.execute(cmd);
-            stdout = stdoutStream.toString(StandardCharsets.UTF_8);
-            if(exitValue != 0) {
-                System.err.println(stdout);
-                throw new RuntimeException("The command '" + cmd +"' has returned exitValue "+exitValue+", process logs below:\n"+stdout);
-            }
-        }
-        catch(ExecuteException eex) {
-            stdout = stdoutStream.toString(StandardCharsets.UTF_8);
-            throw new RuntimeException("The command '" + cmd +"' has thrown ExecuteException, process logs below:\n"+stdout);
-        }
+    private static String getTargetMavenVersion(Path cqVersionUnderTestFolder) {
+        String stdout = MvnwCmdHelper.execute(cqVersionUnderTestFolder, "help:evaluate -Dexpression='target-maven-version' -q -DforceStdout");
         String targetMavenVersion = stdout.substring(stdout.lastIndexOf(System.lineSeparator())+System.lineSeparator().length());
 
-        return "null object or invalid expression".equals(targetMavenVersion) ? "3.6.2" : targetMavenVersion;
+        return "null object or invalid expression".equals(targetMavenVersion) ? "3.8.1" : targetMavenVersion;
     }
 
-    private static void setMvnwMavenVersion(Path cqVersionUnderTestFolder, String targetMavenVersion) throws IOException {
-        File mvnwFile = cqVersionUnderTestFolder.resolve("mvnw").toFile();
-        CommandLine cmd = CommandLine.parse(mvnwFile.getAbsolutePath()+ " wrapper:wrapper -Dmaven="+targetMavenVersion);
-        DefaultExecutor executor = new DefaultExecutor();
-        ByteArrayOutputStream stdoutStream = new ByteArrayOutputStream();
-        PumpStreamHandler psh = new PumpStreamHandler(stdoutStream);
-        executor.setStreamHandler(psh);
-        executor.setWorkingDirectory(cqVersionUnderTestFolder.toFile());
-
-        // @TODO: is it output ? or stderr or stdout ? maybe both
-        String stdout;
-        try {
-            int exitValue = executor.execute(cmd);
-            stdout = stdoutStream.toString(StandardCharsets.UTF_8);
-            if(exitValue != 0) {
-                System.err.println(stdout);
-                throw new RuntimeException("The command '" + cmd +"' has returned exitValue "+exitValue+", process logs below:\n"+stdout);
-            }
-        }
-        catch(ExecuteException eex) {
-            stdout = stdoutStream.toString(StandardCharsets.UTF_8);
-            throw new RuntimeException("The command '" + cmd +"' has thrown ExecuteException, process logs below:\n"+stdout);
-        }
+    private static void setMvnwMavenVersion(Path cqVersionUnderTestFolder, String targetMavenVersion) {
+        MvnwCmdHelper.execute(cqVersionUnderTestFolder, "wrapper:wrapper -Dmaven="+targetMavenVersion);
     }
 
-    private static void runPerfRegression(Path cqVersionUnderTestFolder, String args) throws IOException {
-        File mvnwFile = cqVersionUnderTestFolder.resolve("mvnw").toFile();
-        CommandLine cmd = CommandLine.parse(mvnwFile.getAbsolutePath()+ " "+ args);
-        DefaultExecutor executor = new DefaultExecutor();
-        ByteArrayOutputStream stdoutStream = new ByteArrayOutputStream();
-        PumpStreamHandler psh = new PumpStreamHandler(stdoutStream);
-        executor.setStreamHandler(psh);
-        executor.setWorkingDirectory(cqVersionUnderTestFolder.toFile());
-
-        // @TODO: is it output ? or stderr or stdout ? maybe both
-        String stdout;
-        try {
-            int exitValue = executor.execute(cmd);
-            stdout = stdoutStream.toString(StandardCharsets.UTF_8);
-            if(exitValue != 0) {
-                System.err.println(stdout);
-                throw new RuntimeException("The command '" + cmd +"' has returned exitValue "+exitValue+", process logs below:\n"+stdout);
-            }
-        }
-        catch(ExecuteException eex) {
-            stdout = stdoutStream.toString(StandardCharsets.UTF_8);
-            throw new RuntimeException("The command '" + cmd +"' has thrown ExecuteException, process logs below:\n"+stdout);
-        }
+    private static void runPerfRegression(Path cqVersionUnderTestFolder, String args) {
+        String stdout = MvnwCmdHelper.execute(cqVersionUnderTestFolder, args);
 
         System.out.println("-----------------------------------------");
 
