@@ -21,6 +21,7 @@ import picocli.CommandLine.Parameters;
  * Add an option to switch off native mode
  * Validate parameters and options (business logic)
  * Template file edition, find a library to edit XML and YAML files => Stop using GUID replacement.
+ * org.yaml/snakeyaml ? Load/Edit/Save ? license ?
  * Ideally, we would not include a staging repo with a fake guid when not needed. today it generates warning.
  *
  * Would we integrate this prototype in the main brench one day, we could make cq-perf-regression-app an example, in order to detect breakage ?
