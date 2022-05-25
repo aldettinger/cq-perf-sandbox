@@ -1,14 +1,13 @@
 package org.apache.camel.quarkus.performance.regression;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.RegExUtils;
+import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -21,7 +20,7 @@ import picocli.CommandLine.Parameters;
  * Add an option to switch off native mode
  * Validate parameters and options (business logic)
  * Template file edition, find a library to edit XML and YAML files => Stop using GUID replacement.
- * org.yaml/snakeyaml ? Load/Edit/Save ? license ?
+ * org.yaml/snakeyaml ? Load/Edit/Save ? license ? Maybe velocity is more indicated in this case
  * Ideally, we would not include a staging repo with a fake guid when not needed. today it generates warning.
  *
  * Would we integrate this prototype in the main brench one day, we could make cq-perf-regression-app an example, in order to detect breakage ?
@@ -62,34 +61,20 @@ public class PerfRegressionCommand implements Runnable {
             for (String cqVersion : cqVersions) {
                 runPerfRegressionForCqVersion(cqVersionsUnderTestFolder.resolve(cqVersion), cqVersion);
             }
-        } catch (IOException e) {
+        } catch (IOException|XmlPullParserException e) {
+            // Really needed, can't we just wrap as RuntimeException ?
             System.err.println("Can't run performance regression tests because an issue has been caught:");
             e.printStackTrace(System.err);
         }
     }
 
-    private void runPerfRegressionForCqVersion(Path cqVersionUnderTestFolder, String cqVersion) throws IOException {
+    private void runPerfRegressionForCqVersion(Path cqVersionUnderTestFolder, String cqVersion) throws IOException, XmlPullParserException {
 
         // Copy the template project into a folder dedicated to cqVersion tests
         FileUtils.copyDirectory(PERF_SAMPLE_TEMPLATE_FOLDER.toFile(), cqVersionUnderTestFolder.toFile());
 
-        File benchmarkFile = cqVersionUnderTestFolder.resolve("cq-perf-regression-scenario.hf.yaml").toFile();
-        String benchmarkFileContent = FileUtils.readFileToString(benchmarkFile, StandardCharsets.UTF_8);
-        benchmarkFileContent = benchmarkFileContent.replaceAll("372f6453-7527-43b1-850b-3824fc3d1187", singleScenarioDuration);
-        FileUtils.writeStringToFile(benchmarkFile, benchmarkFileContent, StandardCharsets.UTF_8);
-
-        File pomFile = cqVersionUnderTestFolder.resolve("pom.xml").toFile();
-        String pomFileContent = FileUtils.readFileToString(pomFile, StandardCharsets.UTF_8);
-
-        // Replace the parent version, camel-quarkus staging repository and fianlly camel staging repository
-        pomFileContent = pomFileContent.replaceAll("ce52c658-292c-461f-968b-5930dae42629", cqVersion);
-        if(cqStagingRepository != null) {
-            pomFileContent = pomFileContent.replaceAll("2d114490-c5a8-4c61-b960-4283811d2405", cqStagingRepository);
-        }
-        if(camelStagingRepository != null) {
-            pomFileContent = pomFileContent.replaceAll("2d114490-c5a8-4c61-b960-4283811d2405", camelStagingRepository);
-        }
-        FileUtils.writeStringToFile(pomFile, pomFileContent, StandardCharsets.UTF_8);
+        FileEditionHelper.instantiateHyperfoilScenario(cqVersionUnderTestFolder, singleScenarioDuration);
+        FileEditionHelper.instantiatePomFile(cqVersionUnderTestFolder, cqVersion, cqStagingRepository, camelStagingRepository);
 
         // Replace the maven version in maven wrapper
         String targetMavenVersion = getTargetMavenVersion(cqVersionUnderTestFolder);

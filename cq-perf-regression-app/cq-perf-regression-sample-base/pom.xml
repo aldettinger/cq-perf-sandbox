@@ -7,14 +7,11 @@
     <parent>
         <groupId>org.apache.camel.quarkus</groupId>
         <artifactId>camel-quarkus</artifactId>
-        <!-- The parent version will be replaced for each camel-quarkus versions under performance regression test -->
-        <version>ce52c658-292c-461f-968b-5930dae42629</version>
+        <!-- The parent version will be set programmatically -->
+        <version/>
     </parent>
     <artifactId>cq-perf-regression-sample</artifactId>
     <properties>
-        <!-- The two properties below could be set to ensure performance non regression against a staging release -->
-        <cq-staging-url>2d114490-c5a8-4c61-b960-4283811d2405</cq-staging-url>
-        <camel-staging-url>a71a6b59-e289-4103-b3c7-100eb37ee4f4</camel-staging-url>
         <compiler-plugin.version>3.8.1</compiler-plugin.version>
         <maven.compiler.parameters>true</maven.compiler.parameters>
         <maven.compiler.source>11</maven.compiler.source>
@@ -23,30 +20,9 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <surefire-plugin.version>3.0.0-M5</surefire-plugin.version>
     </properties>
-    <pluginRepositories>
-        <pluginRepository>
-            <id>camel-quarkus-staging</id>
-            <name>Camel Quarkus Staging Repository</name>
-            <url>${cq-staging-url}</url>
-        </pluginRepository>
-        <pluginRepository>
-            <id>camel-staging</id>
-            <name>Camel Staging Repository</name>
-            <url>${camel-staging-url}</url>
-        </pluginRepository>
-    </pluginRepositories>
-    <repositories>
-        <repository>
-            <id>camel-quarkus-staging</id>
-            <name>Camel Quarkus Staging Repository</name>
-            <url>${cq-staging-url}</url>
-        </repository>
-        <repository>
-            <id>camel-staging</id>
-            <name>Camel Staging Repository</name>
-            <url>${camel-staging-url}</url>
-        </repository>
-    </repositories>
+    <!-- The repositories will be set programmatically, if needed -->
+    <pluginRepositories/>
+    <repositories/>
     <dependencyManagement>
         <dependencies>
             <dependency>
