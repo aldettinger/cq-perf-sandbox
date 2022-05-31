@@ -19,19 +19,15 @@ import picocli.CommandLine.Parameters;
  *
  * Add an option to switch off native mode
  * Validate parameters and options (business logic)
- * Template file edition, find a library to edit XML and YAML files => Stop using GUID replacement.
- * org.yaml/snakeyaml ? Load/Edit/Save ? license ? Maybe velocity is more indicated in this case
- * Ideally, we would not include a staging repo with a fake guid when not needed. today it generates warning.
  *
- * Would we integrate this prototype in the main brench one day, we could make cq-perf-regression-app an example, in order to detect breakage ?
+ * Would we integrate this prototype in the main branch one day, we could make cq-perf-regression-app an example or a test, in order to detect breakage ?
  *
  * # @NOTES:
- * # We should be able to build with camel-quarkus version >= 2.5.0, after CAMEL-QUARKUS-2578 fix (need to enforce the version with a check)
+ * # We should be able to build with camel-quarkus version >= 2.5.0, note before due to CAMEL-QUARKUS-2578 fix (need to enforce the version with a check)
  * # We don't generate the cq-perf-regression-sample-app with the quarkus-maven-plugin so that we can test against a SNAPSHOT or release candidate versions (don't need to wait for quarkus-platform release)
- *
- * mvn versions matrix:
- * 2.6.0.CR1 => 3.8.4
- * 2.1.0 => 3.8.1
+ * # We automatically use the right maven version
+ * # camel-quarkus >= 2.6.0.CR1 => maven 3.8.4
+ * # camel-quarkus >= 2.1.0     => maven 3.8.1
  */
 @picocli.CommandLine.Command(description = "Run a performance test against a list of Camel Quarkus versions")
 public class PerfRegressionCommand implements Runnable {
@@ -53,14 +49,18 @@ public class PerfRegressionCommand implements Runnable {
     @Override
     public void run() {
 
+        PerformanceRegressionReport report = new PerformanceRegressionReport(singleScenarioDuration);
+
         Path cqVersionsUnderTestFolder = Paths.get("target/cq-versions-under-test");
         try {
             Files.createDirectories(cqVersionsUnderTestFolder);
             FileUtils.cleanDirectory(cqVersionsUnderTestFolder.toFile());
 
             for (String cqVersion : cqVersions) {
-                runPerfRegressionForCqVersion(cqVersionsUnderTestFolder.resolve(cqVersion), cqVersion);
+                runPerfRegressionForCqVersion(cqVersionsUnderTestFolder.resolve(cqVersion), cqVersion, report);
             }
+
+            System.out.println(report.printAll());
         } catch (IOException|XmlPullParserException e) {
             // Really needed, can't we just wrap as RuntimeException ?
             System.err.println("Can't run performance regression tests because an issue has been caught:");
@@ -68,7 +68,7 @@ public class PerfRegressionCommand implements Runnable {
         }
     }
 
-    private void runPerfRegressionForCqVersion(Path cqVersionUnderTestFolder, String cqVersion) throws IOException, XmlPullParserException {
+    private void runPerfRegressionForCqVersion(Path cqVersionUnderTestFolder, String cqVersion, PerformanceRegressionReport report) throws IOException, XmlPullParserException {
 
         // Copy the template project into a folder dedicated to cqVersion tests
         FileUtils.copyDirectory(PERF_SAMPLE_TEMPLATE_FOLDER.toFile(), cqVersionUnderTestFolder.toFile());
@@ -81,10 +81,12 @@ public class PerfRegressionCommand implements Runnable {
         setMvnwMavenVersion(cqVersionUnderTestFolder, targetMavenVersion);
 
         // Run performance regression test in JVM mode
-        runPerfRegression(cqVersionUnderTestFolder, "integration-test");
+        double jvmThroughput = runPerfRegression(cqVersionUnderTestFolder, "integration-test");
+        report.setCategoryMeasure(cqVersion, "JVM", jvmThroughput);
 
         // Run performance regression test in native mode
-        runPerfRegression(cqVersionUnderTestFolder, "integration-test -Dnative -Dquarkus.native.container-build=true");
+        double nativeThroughput = runPerfRegression(cqVersionUnderTestFolder, "integration-test -Dnative -Dquarkus.native.container-build=true");
+        report.setCategoryMeasure(cqVersion, "Native", nativeThroughput);
     }
 
     private static String getTargetMavenVersion(Path cqVersionUnderTestFolder) {
@@ -98,17 +100,12 @@ public class PerfRegressionCommand implements Runnable {
         MvnwCmdHelper.execute(cqVersionUnderTestFolder, "wrapper:wrapper -Dmaven="+targetMavenVersion);
     }
 
-    private static void runPerfRegression(Path cqVersionUnderTestFolder, String args) {
+    private static double runPerfRegression(Path cqVersionUnderTestFolder, String args) {
         String stdout = MvnwCmdHelper.execute(cqVersionUnderTestFolder, args);
-
-        System.out.println("-----------------------------------------");
 
         // Extract the throughput from a log line like "15:26:23,110 INFO  (main) [i.h.m.RunMojo] Requests/sec: 1153.56"
         String throughput = RegExUtils.replacePattern(stdout, ".*RunMojo] Requests/sec: ([0-9.,]+).*", "$1");
-        throughput.toString();
-
-        System.out.println("Parsed throughput = '"+throughput+"' Req/s");
-        System.out.println("-----------------------------------------");
+        return Double.parseDouble(throughput);
     }
 
 }
