@@ -40,27 +40,37 @@ public class PerformanceRegressionReport {
         StringColumn durationsColumn = StringColumn.create("Duration");
         StringColumn jvmMeasuresColumn = StringColumn.create("JVM req/s [%increase]");
         StringColumn nativeMeasuresColumn = StringColumn.create("Native req/s [%increase]");
+        StringColumn statusColumn = StringColumn.create("Status");
         double previousJvmMeasure = Double.POSITIVE_INFINITY;
         double previousNativeMeasure = Double.POSITIVE_INFINITY;
 
         for (Map.Entry<ComparableVersion, Map<String, Double>> measure : measures.entrySet()) {
             cqVersionsColumn.append(measure.getKey().toString());
             durationsColumn.append(duration);
+            boolean regressionDetected = false;
 
             double jvmMeasure = measure.getValue().get("JVM");
             double percentIncreaseJvm = (previousJvmMeasure == Double.POSITIVE_INFINITY) ? 0.0 : ((jvmMeasure / previousJvmMeasure) - 1.0) * 100.0;
             jvmMeasuresColumn.append(String.format("%.2f req/s [%+.2f%%]", jvmMeasure, percentIncreaseJvm));
             previousJvmMeasure = jvmMeasure;
+            if (percentIncreaseJvm <= -5.00) {
+                regressionDetected = true;
+            }
 
             if (measure.getValue().containsKey("Native")) {
                 double nativeMeasure = measure.getValue().get("Native");
                 double percentIncreaseNative = (previousNativeMeasure == Double.POSITIVE_INFINITY) ? 0.0 : ((nativeMeasure / previousNativeMeasure) - 1.0) * 100.0;
                 nativeMeasuresColumn.append(String.format("%.2f req/s [%+.2f%%]", nativeMeasure, percentIncreaseNative));
                 previousNativeMeasure = nativeMeasure;
+                if (percentIncreaseNative <= -5.00) {
+                    regressionDetected = true;
+                }
             }
+
+            statusColumn.append(regressionDetected ? "Potential performance regression" : "OK" );
         }
 
-        table.addColumns(cqVersionsColumn, durationsColumn, jvmMeasuresColumn, nativeMeasuresColumn);
+        table.addColumns(cqVersionsColumn, durationsColumn, jvmMeasuresColumn, nativeMeasuresColumn, statusColumn);
 
         return table.printAll();
     }
