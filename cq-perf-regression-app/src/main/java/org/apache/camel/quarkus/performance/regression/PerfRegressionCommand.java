@@ -13,23 +13,21 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * # @TODO:
- * Implement detection of regression (5% variation seems reasonable)
- * Collect metrics and display report
- *
- * Add an option to switch off native mode
- * Validate parameters and options (business logic)
- *
- * Would we integrate this prototype in the main branch one day, we could make cq-perf-regression-app an example or a test, in order to detect breakage ?
+ * @TODO:
+ * + Exception management, fix the last case "Really needed, can't we just wrap as RuntimeException ?"
+ * + Validate parameters and options (business logic)
+ * + All itests run with port 8080, could we make that dynamic ?
+ * + More unit tests ? 'mvn clean test' do not run unit test, do we include them ?
  *
  * # @NOTES:
- * # We should be able to build with camel-quarkus version >= 2.5.0, note before due to CAMEL-QUARKUS-2578 fix (need to enforce the version with a check)
+ * # Testing performance against a given Camel Quarkus version implies to resolve parent artifact oacq:camel-quarkus:pom that brings "quarkus.version", "project.version" and "target-maven-version" properties
+ * # We should be able to build with camel-quarkus version >= 2.5.0, not before due to CAMEL-QUARKUS-2578 fix (need to enforce the version with parameter validation)
  * # We don't generate the cq-perf-regression-sample-app with the quarkus-maven-plugin so that we can test against a SNAPSHOT or release candidate versions (don't need to wait for quarkus-platform release)
  * # We automatically use the right maven version
  * # camel-quarkus >= 2.6.0.CR1 => maven 3.8.4
  * # camel-quarkus >= 2.1.0     => maven 3.8.1
  */
-@picocli.CommandLine.Command(description = "Run a performance test against a list of Camel Quarkus versions")
+@picocli.CommandLine.Command(description = "Run a performance test against a list of Camel Quarkus versions and print a report")
 public class PerfRegressionCommand implements Runnable {
 
     private static Path PERF_SAMPLE_TEMPLATE_FOLDER = Paths.get("cq-perf-regression-sample-base");
@@ -46,9 +44,11 @@ public class PerfRegressionCommand implements Runnable {
     @Option(names = {"-d", "--duration"}, defaultValue = "10m", description = "The duration of a single performance test scenario (e.g. 45s, 30m, 1h). Up to 2 scenarios per version could be run.")
     private String singleScenarioDuration;
 
+    @Option(names = {"-an", "--also-run-native-mode"}, description = "Tells whether the throughput test should also be run in native mode. By default, run in JVM mode only.")
+    private boolean alsoRunNativeMode;
+
     @Override
     public void run() {
-
         PerformanceRegressionReport report = new PerformanceRegressionReport(singleScenarioDuration);
 
         Path cqVersionsUnderTestFolder = Paths.get("target/cq-versions-under-test");
@@ -62,7 +62,7 @@ public class PerfRegressionCommand implements Runnable {
 
             System.out.println(report.printAll());
         } catch (IOException|XmlPullParserException e) {
-            // Really needed, can't we just wrap as RuntimeException ?
+            // @TODO: Really needed, can't we just wrap as RuntimeException ?
             System.err.println("Can't run performance regression tests because an issue has been caught:");
             e.printStackTrace(System.err);
         }
@@ -73,25 +73,27 @@ public class PerfRegressionCommand implements Runnable {
         // Copy the template project into a folder dedicated to cqVersion tests
         FileUtils.copyDirectory(PERF_SAMPLE_TEMPLATE_FOLDER.toFile(), cqVersionUnderTestFolder.toFile());
 
-        FileEditionHelper.instantiateHyperfoilScenario(cqVersionUnderTestFolder, singleScenarioDuration);
+        FileEditionHelper.instantiateHyperfoilBenchmark(cqVersionUnderTestFolder, singleScenarioDuration);
         FileEditionHelper.instantiatePomFile(cqVersionUnderTestFolder, cqVersion, cqStagingRepository, camelStagingRepository);
 
-        // Replace the maven version in maven wrapper
+        // Locally sets the right maven version in the maven wrapper
         String targetMavenVersion = getTargetMavenVersion(cqVersionUnderTestFolder);
         setMvnwMavenVersion(cqVersionUnderTestFolder, targetMavenVersion);
 
         // Run performance regression test in JVM mode
         double jvmThroughput = runPerfRegression(cqVersionUnderTestFolder, "integration-test");
-        report.setCategoryMeasure(cqVersion, "JVM", jvmThroughput);
+        report.setCategoryMeasureForVersion(cqVersion, "JVM", jvmThroughput);
 
         // Run performance regression test in native mode
-        double nativeThroughput = runPerfRegression(cqVersionUnderTestFolder, "integration-test -Dnative -Dquarkus.native.container-build=true");
-        report.setCategoryMeasure(cqVersion, "Native", nativeThroughput);
+        if(alsoRunNativeMode) {
+            double nativeThroughput = runPerfRegression(cqVersionUnderTestFolder, "integration-test -Dnative -Dquarkus.native.container-build=true");
+            report.setCategoryMeasureForVersion(cqVersion, "Native", nativeThroughput);
+        }
     }
 
     private static String getTargetMavenVersion(Path cqVersionUnderTestFolder) {
-        String stdout = MvnwCmdHelper.execute(cqVersionUnderTestFolder, "help:evaluate -Dexpression='target-maven-version' -q -DforceStdout");
-        String targetMavenVersion = stdout.substring(stdout.lastIndexOf(System.lineSeparator())+System.lineSeparator().length());
+        String stdoutAndStdErr = MvnwCmdHelper.execute(cqVersionUnderTestFolder, "help:evaluate -Dexpression='target-maven-version' -q -DforceStdout");
+        String targetMavenVersion = stdoutAndStdErr.substring(stdoutAndStdErr.lastIndexOf(System.lineSeparator())+System.lineSeparator().length());
 
         return "null object or invalid expression".equals(targetMavenVersion) ? "3.8.1" : targetMavenVersion;
     }
