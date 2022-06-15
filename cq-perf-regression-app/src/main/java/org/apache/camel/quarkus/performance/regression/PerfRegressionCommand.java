@@ -62,14 +62,11 @@ public class PerfRegressionCommand implements Runnable {
 
             System.out.println(report.printAll());
         } catch (IOException|XmlPullParserException e) {
-            // @TODO: Really needed, can't we just wrap as RuntimeException ?
-            System.err.println("Can't run performance regression tests because an issue has been caught:");
-            e.printStackTrace(System.err);
+            throw new RuntimeException("An issue has been caught while trying to setup performance regression tests.", e);
         }
     }
 
     private void runPerfRegressionForCqVersion(Path cqVersionUnderTestFolder, String cqVersion, PerformanceRegressionReport report) throws IOException, XmlPullParserException {
-
         // Copy the template project into a folder dedicated to cqVersion tests
         FileUtils.copyDirectory(PERF_SAMPLE_TEMPLATE_FOLDER.toFile(), cqVersionUnderTestFolder.toFile());
 
