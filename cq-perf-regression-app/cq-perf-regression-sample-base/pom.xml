@@ -189,6 +189,10 @@
                         <artifactId>exec-maven-plugin</artifactId>
                         <configuration>
                             <executable>target/cq-perf-regression-sample-${project.version}-runner</executable>
+                            <arguments>
+                                <argument>-XX:+PrintGC</argument>
+                                <argument>-XX:+VerboseGC</argument>
+                            </arguments>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -212,6 +216,9 @@
                         <configuration>
                             <executable>java</executable>
                             <arguments>
+                                <argument>-XX:+UnlockExperimentalVMOptions</argument>
+                                <argument>-XX:+UseEpsilonGC</argument>
+                                <argument>-XX:+HeapDumpOnOutOfMemoryError</argument>
                                 <argument>-jar</argument>
                                 <argument>target/quarkus-app/quarkus-run.jar</argument>
                             </arguments>
