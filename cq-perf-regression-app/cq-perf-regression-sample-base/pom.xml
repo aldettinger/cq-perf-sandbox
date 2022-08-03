@@ -219,6 +219,7 @@
                                 <argument>-XX:+UnlockExperimentalVMOptions</argument>
                                 <argument>-XX:+UseEpsilonGC</argument>
                                 <argument>-XX:+HeapDumpOnOutOfMemoryError</argument>
+                                <argument>-Xmx1024m</argument>
                                 <argument>-jar</argument>
                                 <argument>target/quarkus-app/quarkus-run.jar</argument>
                             </arguments>
