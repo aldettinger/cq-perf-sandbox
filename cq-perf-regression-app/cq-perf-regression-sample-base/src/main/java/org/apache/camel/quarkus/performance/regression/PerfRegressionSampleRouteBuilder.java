@@ -33,11 +33,6 @@ public class PerfRegressionSampleRouteBuilder extends RouteBuilder {
 
     @Override
     public void configure() throws Exception {
-        from("platform-http:/hello").process(new Processor() {
-            @Override
-            public void process(Exchange exchange) throws Exception {
-                from("platform-http:/hello").to("atlasmap:request.adm");
-            }
-        });
+        from("platform-http:/hello").to("atlasmap:request.adm");
     }
 }
